@@ -1,0 +1,130 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+STUDIO_DIR="/opt/android-studio"
+FEED_URL="https://jb.gg/android-studio-releases-list.xml"
+CHECK_ONLY=false
+INSTALL_IF_MISSING=false
+
+for arg in "$@"; do
+  case "$arg" in
+    --check|-c)   CHECK_ONLY=true ;;
+    --install|-i) INSTALL_IF_MISSING=true ;;
+    --help|-h)
+      echo "Uso: update-android-studio [--check | --install]"
+      echo "  --check    Solo comprueba si existe versión estable nueva en Google."
+      echo "  --install  Si /opt/android-studio no existe, lo crea, instala y genera el acceso directo."
+      exit 0
+      ;;
+  esac
+done
+
+if [ ! -d "$STUDIO_DIR" ]; then
+  if [ "$INSTALL_IF_MISSING" = true ]; then
+    echo "Creando directorio $STUDIO_DIR asignado a $USER..."
+    sudo mkdir -p "$STUDIO_DIR"
+    sudo chown -R "$USER:$USER" "$STUDIO_DIR"
+  else
+    echo "Android Studio no encontrado en $STUDIO_DIR (usa --install para instalar desde cero)."
+    exit 0
+  fi
+fi
+
+LOCAL_BUILD="$(tr -d '[:space:]' < "$STUDIO_DIR/build.txt" 2>/dev/null || echo "no-instalado")"
+
+# Consultar canal oficial Release (estable) de Google
+META="$(python3 -c '
+import urllib.request, xml.etree.ElementTree as ET
+xml_data = urllib.request.urlopen("'"$FEED_URL"'", timeout=20).read()
+root = ET.fromstring(xml_data)
+for item in root.findall("item"):
+    if item.findtext("channel") == "Release":
+        name = item.findtext("name", "").strip()
+        build = item.findtext("build", "").strip()
+        version = item.findtext("version", "").strip()
+        for dl in item.findall("download"):
+            link = dl.findtext("link", "").strip()
+            if link.endswith("-linux.tar.gz"):
+                sha = dl.findtext("checksum", "").strip()
+                print("\t".join([name, version, build, link, sha]))
+                raise SystemExit(0)
+raise SystemExit(1)
+')"
+
+IFS=$'\t' read -r REMOTE_NAME REMOTE_VER REMOTE_BUILD REMOTE_URL REMOTE_SHA <<< "$META"
+
+if [ -z "$REMOTE_BUILD" ] || [ -z "$REMOTE_URL" ] || [ -z "$REMOTE_SHA" ]; then
+  echo "No se pudo obtener metadatos válidos del canal estable de Android Studio."
+  exit 1
+fi
+
+if [ "$LOCAL_BUILD" = "$REMOTE_BUILD" ]; then
+  echo "Android Studio Stable al día: ${REMOTE_NAME} (${LOCAL_BUILD})"
+  exit 0
+fi
+
+echo "Nueva versión estable de Android Studio detectada:"
+echo "  Instalada : ${LOCAL_BUILD}"
+echo "  Disponible: ${REMOTE_NAME} (${REMOTE_BUILD})"
+
+if [ "$CHECK_ONLY" = true ]; then
+  exit 0
+fi
+
+# No interrumpir si el usuario tiene Android Studio abierto trabajando
+if pgrep -f "$STUDIO_DIR" >/dev/null 2>&1; then
+  echo "Android Studio está abierto actualmente; se pospone la actualización para no interrumpir tu sesión."
+  exit 0
+fi
+
+if [ ! -w "$STUDIO_DIR" ]; then
+  echo "Sin permisos de escritura en $STUDIO_DIR. Ejecuta una vez: sudo chown -R $USER:$USER $STUDIO_DIR"
+  exit 1
+fi
+
+TMP_DIR="/tmp/android-studio-update-$(id -u)"
+rm -rf "$TMP_DIR"
+mkdir -p "$TMP_DIR"
+trap 'rm -rf "$TMP_DIR"' EXIT
+
+ARCHIVE="$TMP_DIR/android-studio.tar.gz"
+echo "Descargando ${REMOTE_NAME} desde canal oficial de Google..."
+curl -fL --retry 3 -o "$ARCHIVE" "$REMOTE_URL"
+
+echo "Verificando firma criptográfica SHA-256..."
+echo "${REMOTE_SHA}  ${ARCHIVE}" | sha256sum -c -
+
+echo "Extrayendo y aplicando en $STUDIO_DIR..."
+tar -xzf "$ARCHIVE" -C "$TMP_DIR"
+
+if [ ! -f "$TMP_DIR/android-studio/build.txt" ]; then
+  echo "Error: estructura inesperada en el paquete descargado; abortando."
+  exit 1
+fi
+
+rsync -a --delete "$TMP_DIR/android-studio/" "$STUDIO_DIR/"
+
+if [ ! -e "$STUDIO_DIR/bin/studio.sh" ] && [ -x "$STUDIO_DIR/bin/studio" ]; then
+  ln -sf studio "$STUDIO_DIR/bin/studio.sh"
+fi
+
+# Crear acceso directo de escritorio si aún no existe
+DESKTOP_FILE="$HOME/.local/share/applications/android-studio.desktop"
+if [ ! -f "$DESKTOP_FILE" ]; then
+  mkdir -p "$HOME/.local/share/applications"
+  cat > "$DESKTOP_FILE" <<EOF
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Android Studio
+Comment=Android Studio IDE
+Exec=/opt/android-studio/bin/studio %f
+Icon=/opt/android-studio/bin/studio.svg
+Categories=Development;IDE;
+Terminal=false
+StartupNotify=true
+StartupWMClass=jetbrains-studio
+EOF
+fi
+
+echo "✔ Android Studio listo en ${REMOTE_NAME} (${REMOTE_BUILD})."
