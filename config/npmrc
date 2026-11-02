@@ -1,0 +1,4 @@
+# Seguridad contra ataques de Supply-Chain (ventana de enfriamiento de 1 día = 24h)
+min-release-age=1
+audit=true
+fund=false

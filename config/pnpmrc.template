@@ -1,0 +1,3 @@
+minimum-release-age=1440
+ignore-scripts=true
+global-bin-dir=__HOME__/.local/share/pnpm/bin

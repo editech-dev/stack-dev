@@ -1,0 +1,3 @@
+[install]
+# Solo instalar versiones publicadas hace al menos 24 horas (86400 segundos)
+minimumReleaseAge = 86400
