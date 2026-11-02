@@ -1,0 +1,12 @@
+[Unit]
+Description=Actualización automática diaria del Stack de Desarrollo y Agentes IA
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStartPre=/bin/sleep 60
+ExecStart=%h/.local/bin/dev-update --auto
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7

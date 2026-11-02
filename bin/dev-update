@@ -1,0 +1,142 @@
+#!/usr/bin/env bash
+set -uo pipefail
+
+# Garantizar entorno completo y portable tanto en terminal interactiva como en systemd --user
+export PNPM_HOME="$HOME/.local/share/pnpm"
+export BUN_INSTALL="$HOME/.bun"
+export DENO_INSTALL="$HOME/.deno"
+if [ -d "/usr/lib/jvm/java-25-openjdk-$(dpkg --print-architecture 2>/dev/null || echo amd64)" ]; then
+  export JAVA_HOME="/usr/lib/jvm/java-25-openjdk-$(dpkg --print-architecture 2>/dev/null || echo amd64)"
+elif command -v javac >/dev/null 2>&1; then
+  export JAVA_HOME="$(dirname "$(dirname "$(readlink -f "$(command -v javac)")")")"
+fi
+export ANDROID_HOME="$HOME/Android/Sdk"
+export PATH="$HOME/.local/bin:$HOME/.opencode/bin:$PNPM_HOME/bin:$BUN_INSTALL/bin:$DENO_INSTALL/bin:${JAVA_HOME:+$JAVA_HOME/bin:}$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator:$HOME/flutter/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/snap/bin"
+
+AUTO_MODE=false
+for arg in "$@"; do
+  case "$arg" in
+    --auto) AUTO_MODE=true ;;
+    --help|-h)
+      echo "Uso: dev-update [--auto]"
+      echo "  (sin flags)  Actualización interactiva completa (incluye sudo apt + snap + stack + herramientas IA)"
+      echo "  --auto       Modo desatendido diario (espacio de usuario + log + notificación de escritorio)"
+      exit 0
+      ;;
+  esac
+done
+
+STATE_DIR="$HOME/.local/state"
+LOG_FILE="$STATE_DIR/dev-update.log"
+LOCK_FILE="/tmp/dev-update-$(id -u).lock"
+mkdir -p "$STATE_DIR"
+
+exec 9>"$LOCK_FILE"
+if ! flock -n 9; then
+  echo "Ya hay una instancia de dev-update en ejecución."
+  exit 0
+fi
+
+if [ "$AUTO_MODE" = true ]; then
+  if [ -f "$LOG_FILE" ]; then
+    tail -n 2000 "$LOG_FILE" > "${LOG_FILE}.tmp" && mv "${LOG_FILE}.tmp" "$LOG_FILE"
+  fi
+  exec >>"$LOG_FILE" 2>&1
+  echo "=================================================================="
+  echo "[$(date '+%Y-%m-%d %H:%M:%S')] Inicio de dev-update --auto"
+
+  NET_OK=false
+  for _ in $(seq 1 12); do
+    if curl -fsSI --max-time 5 https://www.google.com >/dev/null 2>&1; then
+      NET_OK=true
+      break
+    fi
+    sleep 5
+  done
+  if [ "$NET_OK" = false ]; then
+    echo "[WARN] Sin conexión a internet; se pospone actualización."
+    exit 0
+  fi
+fi
+
+CYAN='\033[0;36m'
+GREEN='\033[0;32m'
+BOLD='\033[1m'
+NC='\033[0m'
+
+if [ "$AUTO_MODE" = true ]; then
+  CYAN=""; GREEN=""; BOLD=""; NC=""
+fi
+
+step() { echo -e "\n${BOLD}${CYAN}▶ $*${NC}"; }
+
+echo -e "${BOLD}${GREEN}=== Actualización Segura del Stack de Desarrollo (dev-update) ===${NC}"
+
+if [ "$AUTO_MODE" = false ]; then
+  step "1/7 Parches de seguridad del sistema, OpenJDK LTS, DBeaver (apt) y Snaps (scrcpy)..."
+  sudo apt-get update && sudo apt-get upgrade -y && sudo apt-get autoremove -y
+  command -v snap >/dev/null 2>&1 && sudo snap refresh || true
+else
+  step "1/7 Sistema base, DBeaver y Snaps (modo --auto: gestionados automáticamente por unattended-upgrades y snapd)..."
+fi
+
+step "2/7 Node.js LTS (NVM) y npm..."
+export NVM_DIR="$HOME/.nvm"
+if [ -s "$NVM_DIR/nvm.sh" ]; then
+  # shellcheck disable=SC1090
+  . "$NVM_DIR/nvm.sh"
+  CUR_NODE="$(nvm current)"
+  TARGET_LTS="$(nvm version-remote --lts)"
+  if [ -n "$TARGET_LTS" ] && [ "$CUR_NODE" != "$TARGET_LTS" ]; then
+    echo "Nueva versión LTS disponible: ${CUR_NODE} -> ${TARGET_LTS}"
+    nvm install 'lts/*' --reinstall-packages-from=current </dev/null
+    nvm alias default 'lts/*'
+  else
+    echo "Node LTS al día (${CUR_NODE})."
+  fi
+  timeout 3m npm install -g npm@latest </dev/null || echo "Nota: si la última revisión de npm salió hace <24h, min-release-age espera 1 día por seguridad."
+fi
+
+step "3/7 pnpm standalone y herramientas globales (vercel)..."
+if command -v pnpm >/dev/null 2>&1; then
+  timeout 3m pnpm self-update </dev/null || true
+  timeout 3m pnpm up -g </dev/null || true
+fi
+
+step "4/7 Bun y Deno..."
+command -v bun >/dev/null 2>&1  && timeout 3m bun upgrade </dev/null || true
+command -v deno >/dev/null 2>&1 && timeout 3m deno upgrade </dev/null || true
+
+step "5/7 Python (uv)..."
+if command -v uv >/dev/null 2>&1; then
+  timeout 3m uv self update </dev/null || true
+  timeout 3m uv tool upgrade --all </dev/null || true
+fi
+
+step "6/7 Flutter (stable), Android Studio y Android SDK..."
+command -v flutter >/dev/null 2>&1 && timeout 10m flutter upgrade </dev/null || true
+if [ -x "$HOME/.local/bin/update-android-studio" ]; then
+  timeout 25m "$HOME/.local/bin/update-android-studio" </dev/null || true
+fi
+if [ -x "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" ] && [ -d "/opt/android-studio/jbr" ]; then
+  JAVA_HOME="/opt/android-studio/jbr" timeout 10m "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --update </dev/null || true
+fi
+
+step "7/7 Herramientas IA de desarrollo (agy, opencode, claude, codex)..."
+command -v agy >/dev/null 2>&1      && timeout 5m agy update </dev/null || true
+command -v opencode >/dev/null 2>&1 && timeout 5m opencode upgrade --method curl </dev/null || true
+command -v claude >/dev/null 2>&1   && timeout 5m claude update </dev/null || true
+command -v codex >/dev/null 2>&1    && timeout 5m codex update </dev/null || true
+
+date '+%Y-%m-%d %H:%M:%S' > "$STATE_DIR/dev-update.last"
+
+if [ "$AUTO_MODE" = true ]; then
+  echo "[$(date '+%Y-%m-%d %H:%M:%S')] Finalizado correctamente."
+  export DBUS_SESSION_BUS_ADDRESS="${DBUS_SESSION_BUS_ADDRESS:-unix:path=/run/user/$(id -u)/bus}"
+  command -v notify-send >/dev/null 2>&1 && notify-send --app-name="Dev Stack" --icon=software-update-available \
+    "Stack de Desarrollo al día ✔" \
+    "Node, npm, pnpm, Bun, Deno, uv, Flutter, Android Studio, agy, opencode, claude y codex verificados." || true
+else
+  echo -e "\n${BOLD}${GREEN}✔ Proceso finalizado. Ejecutando verificación de estado:${NC}"
+  "$HOME/.local/bin/dev-check"
+fi
