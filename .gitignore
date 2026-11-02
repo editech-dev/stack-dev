@@ -1,0 +1,17 @@
+# Logs, historiales y estados locales
+*.log
+*.bak*
+*.tmp
+*.local
+.zshrc.local
+.DS_Store
+
+# Nunca versionar credenciales, llaves ni sesiones locales
+*.pem
+*.key
+*secret*
+*token*
+*credentials*
+auth.json
+.env
+.env.*
