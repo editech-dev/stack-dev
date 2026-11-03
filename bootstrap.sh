@@ -141,9 +141,9 @@ else
 fi
 
 # ------------------------------------------------------------------------------
-# 6. NVM + Node.js LTS + pnpm standalone + vercel global
+# 6. NVM + Node.js LTS + pnpm standalone + vercel y supabase globales
 # ------------------------------------------------------------------------------
-info "6/11 NVM, Node.js LTS, pnpm standalone y Vercel CLI"
+info "6/11 NVM, Node.js LTS, pnpm standalone, Vercel CLI y Supabase CLI"
 export NVM_DIR="$HOME/.nvm"
 if [ -s "$NVM_DIR/nvm.sh" ]; then
   present "NVM ($NVM_DIR)"
@@ -184,6 +184,15 @@ else
   missing "Vercel CLI (pnpm global)"
   if [ "$DRY_RUN" = false ]; then
     "$PNPM_HOME/bin/pnpm" add -g vercel
+  fi
+fi
+
+if [ -x "$PNPM_HOME/bin/supabase" ] || command -v supabase >/dev/null 2>&1; then
+  present "Supabase CLI ($(supabase --version 2>&1 | head -n1))"
+else
+  missing "Supabase CLI (pnpm global)"
+  if [ "$DRY_RUN" = false ]; then
+    "$PNPM_HOME/bin/pnpm" add -g supabase
   fi
 fi
 

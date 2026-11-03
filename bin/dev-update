@@ -97,7 +97,7 @@ if [ -s "$NVM_DIR/nvm.sh" ]; then
   timeout 3m npm install -g npm@latest </dev/null || echo "Nota: si la última revisión de npm salió hace <24h, min-release-age espera 1 día por seguridad."
 fi
 
-step "3/7 pnpm standalone y herramientas globales (vercel)..."
+step "3/7 pnpm standalone y herramientas globales (vercel, supabase)..."
 if command -v pnpm >/dev/null 2>&1; then
   timeout 3m pnpm self-update </dev/null || true
   timeout 3m pnpm up -g </dev/null || true
