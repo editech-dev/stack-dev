@@ -54,6 +54,7 @@ check_cmd "AGY CLI"  "agy"      "agy --version"
 check_cmd "OpenCode" "opencode" "opencode --version"
 check_cmd "Claude"   "claude"   "claude --version"
 check_cmd "Codex"    "codex"    "codex --version"
+check_cmd "Hermes"   "hermes"   "hermes --version"
 
 # 2. Conflictos de sombra en /usr/bin y coherencia Java
 echo -e "\n${BOLD}2. Coherencia de Runtimes (Cero Duplicados Críticos):${NC}"

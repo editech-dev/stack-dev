@@ -269,9 +269,9 @@ else
 fi
 
 # ------------------------------------------------------------------------------
-# 9. Agentes y CLIs de IA (agy, opencode, claude, codex)
+# 9. Agentes y CLIs de IA (agy, opencode, claude, codex, hermes)
 # ------------------------------------------------------------------------------
-info "9/11 Herramientas IA de Desarrollo (agy, opencode, claude, codex)"
+info "9/11 Herramientas IA de Desarrollo (agy, opencode, claude, codex, hermes)"
 
 install_ai_tool() {
   local label="$1" bin_name="$2" install_cmd="$3"
@@ -287,6 +287,7 @@ install_ai_tool "Antigravity CLI (agy)" "agy"      "curl -fsSL https://antigravi
 install_ai_tool "OpenCode"              "opencode" "curl -fsSL https://opencode.ai/install | bash"
 install_ai_tool "Claude Code"           "claude"   "curl -fsSL https://claude.ai/install.sh | bash"
 install_ai_tool "Codex CLI"             "codex"    "curl -fsSL https://chatgpt.com/codex/install.sh | CODEX_NON_INTERACTIVE=1 sh"
+install_ai_tool "Hermes Agent"          "hermes"   "curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash -s -- --non-interactive"
 
 # ------------------------------------------------------------------------------
 # 10. Oh-My-Zsh y Perfiles de Shell (.zshrc / .bashrc)

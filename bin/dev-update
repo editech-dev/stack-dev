@@ -122,11 +122,12 @@ if [ -x "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" ] && [ -d "/opt/andr
   JAVA_HOME="/opt/android-studio/jbr" timeout 10m "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --update </dev/null || true
 fi
 
-step "7/7 Herramientas IA de desarrollo (agy, opencode, claude, codex)..."
+step "7/7 Herramientas IA de desarrollo (agy, opencode, claude, codex, hermes)..."
 command -v agy >/dev/null 2>&1      && timeout 5m agy update </dev/null || true
 command -v opencode >/dev/null 2>&1 && timeout 5m opencode upgrade --method curl </dev/null || true
 command -v claude >/dev/null 2>&1   && timeout 5m claude update </dev/null || true
 command -v codex >/dev/null 2>&1    && timeout 5m codex update </dev/null || true
+command -v hermes >/dev/null 2>&1   && timeout 15m hermes update --yes </dev/null || true
 
 date '+%Y-%m-%d %H:%M:%S' > "$STATE_DIR/dev-update.last"
 
@@ -135,7 +136,7 @@ if [ "$AUTO_MODE" = true ]; then
   export DBUS_SESSION_BUS_ADDRESS="${DBUS_SESSION_BUS_ADDRESS:-unix:path=/run/user/$(id -u)/bus}"
   command -v notify-send >/dev/null 2>&1 && notify-send --app-name="Dev Stack" --icon=software-update-available \
     "Stack de Desarrollo al día ✔" \
-    "Node, npm, pnpm, Bun, Deno, uv, Flutter, Android Studio, agy, opencode, claude y codex verificados." || true
+    "Node, npm, pnpm, Bun, Deno, uv, Flutter, Android Studio, agy, opencode, claude, codex y hermes verificados." || true
 else
   echo -e "\n${BOLD}${GREEN}✔ Proceso finalizado. Ejecutando verificación de estado:${NC}"
   "$HOME/.local/bin/dev-check"
