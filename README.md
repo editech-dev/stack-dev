@@ -34,7 +34,7 @@ cd ~/stack-dev
 | **JS / TS** | **Node.js LTS** (`nvm`), **`npm`**, **`pnpm`** standalone, **Bun**, **Deno** | `vercel` y `supabase` como únicos CLIs globales en `pnpm` (con tokens de acceso aislados por proyecto). |
 | **Python** | **`uv`** + soporte automático si existe `Anaconda3` | Entornos aislados ultrarrápidos sin contaminar el Python del sistema. |
 | **Datos & Contenedores** | **DBeaver CE** + **Docker Engine** | DBeaver conectado a su repositorio firmado GPG y auto-actualización diaria; Docker para correr runtimes sensibles (como PHP) con cero huella en el host. |
-| **Agentes CLI** | **`agy`** (Antigravity CLI), **`opencode`**, **`claude`**, **`codex`** | Instalaciones standalone oficiales actualizadas automáticamente todos los días. |
+| **Agentes CLI** | **`agy`** (Antigravity CLI), **`opencode`**, **`claude`**, **`codex`**, **`hermes`** (Hermes Agent) | Instalaciones standalone oficiales actualizadas automáticamente todos los días (incluyendo migración segura y reinicio de gateway en Hermes). |
 
 ---
 
@@ -58,7 +58,7 @@ cd ~/stack-dev
 ## Comandos Incluidos en `~/.local/bin`
 
 - **`dev-check`**: Panel de auditoría instantánea (versiones, rutas únicas, coherencia `java == javac`, estado de los 3 escudos de 24h, revisión de versión de Gradle del proyecto actual y estado del temporizador automático).
-- **`dev-update`**: Actualiza manualmente todo el stack (`apt`, `snap`, Node LTS, `npm`, `pnpm` + `vercel`/`supabase`, Bun, Deno, `uv`, Flutter, Android Studio, Android SDK y los 4 CLIs).
+- **`dev-update`**: Actualiza manualmente todo el stack (`apt`, `snap`, Node LTS, `npm`, `pnpm` + `vercel`/`supabase`, Bun, Deno, `uv`, Flutter, Android Studio, Android SDK y los 5 CLIs).
 - **`dev-update --auto`**: Modo silencioso ejecutado una vez al día por `systemd --user` (`dev-update.timer` con `Persistent=true`), con registro en `~/.local/state/dev-update.log` y notificación de escritorio al finalizar.
 - **`update-android-studio`**: Comprueba (`--check`), instala (`--install`) o actualiza Android Studio Stable validando su hash SHA-256 oficial, posponiendo la actualización si detecta que tienes el IDE abierto.
 
